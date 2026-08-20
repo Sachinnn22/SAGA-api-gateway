@@ -4,7 +4,6 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -16,12 +15,10 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret:a-very-secure-jwt-secret-key-that-should-be-at-least-256-bits-long}")
-    private String secret;
+    private static final String SECRET = "MySuperDuperSecretKeyForJwtAuthenticationWhichIsVeryLongAndSecure123456";
 
     private SecretKey getSigningKey() {
-        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
+        return Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
     }
 
     public String extractEmail(String token) {
@@ -29,8 +26,9 @@ public class JwtUtil {
     }
 
     public Long extractId(String token) {
-        return extractClaim(token, claims -> claims.get("id", Long.class));
-    }
+    Number idNumber = extractClaim(token, claims -> claims.get("id", Number.class));
+    return idNumber != null ? idNumber.longValue() : null;
+}
 
     public String extractRole(String token) {
         return extractClaim(token, claims -> claims.get("role", String.class));
@@ -54,7 +52,7 @@ public class JwtUtil {
                     .getPayload();
         } catch (Exception e) {
             log.error("Failed to parse JWT claims: {}", e.getMessage());
-            throw e; // Rethrow so the AuthenticationFilter can catch and handle specific JWT exceptions
+            throw e; 
         }
     }
 

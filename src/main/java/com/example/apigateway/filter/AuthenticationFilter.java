@@ -144,6 +144,21 @@ public class AuthenticationFilter
                     );
                 }
 
+                String path = request.getURI().getPath();
+                String method = request.getMethod().name();
+
+                boolean isAdminRoute = path.startsWith("/api/v1/salons") && 
+                                       (method.equals("POST") || method.equals("PUT") || method.equals("DELETE"));
+
+                if (isAdminRoute && !"ROLE_ADMIN".equals(role)) {
+                    log.warn("Access denied: User {} with role {} tried to access admin route {}", email, role, path);
+                    return onError(
+                            exchange,
+                            "Access Denied: Only Admins can perform this action",
+                            HttpStatus.FORBIDDEN
+                    );
+                }
+
                 ServerHttpRequest mutatedRequest = request.mutate()
                         .header(
                                 "X-User-Id",
