@@ -72,12 +72,10 @@ public class AuthenticationFilter
                     .getFirst(HttpHeaders.AUTHORIZATION);
 
             if (authHeader == null || authHeader.isBlank()) {
-
                 log.warn(
                         "Authentication failed: Missing Authorization header for path: {}",
                         request.getURI().getPath()
                 );
-
                 return onError(
                         exchange,
                         "Authorization header is missing",
@@ -86,12 +84,10 @@ public class AuthenticationFilter
             }
 
             if (!authHeader.startsWith("Bearer ")) {
-
                 log.warn(
                         "Authentication failed: Invalid Authorization header format for path: {}",
                         request.getURI().getPath()
                 );
-
                 return onError(
                         exchange,
                         "Invalid Authorization header format",
@@ -102,7 +98,6 @@ public class AuthenticationFilter
             String token = authHeader.substring(7).trim();
 
             if (token.isBlank()) {
-
                 return onError(
                         exchange,
                         "JWT token is missing",
@@ -117,12 +112,10 @@ public class AuthenticationFilter
                 String role = jwtUtil.extractRole(token);
 
                 if (email == null || email.isBlank()) {
-
                     log.warn(
                             "Authentication failed: Email not found in JWT for path: {}",
                             request.getURI().getPath()
                     );
-
                     return onError(
                             exchange,
                             "JWT token is invalid",
@@ -131,12 +124,10 @@ public class AuthenticationFilter
                 }
 
                 if (jwtUtil.isTokenExpired(token)) {
-
                     log.warn(
                             "Authentication failed: JWT token has expired for path: {}",
                             request.getURI().getPath()
                     );
-
                     return onError(
                             exchange,
                             "JWT token has expired",
@@ -147,10 +138,12 @@ public class AuthenticationFilter
                 String path = request.getURI().getPath();
                 String method = request.getMethod().name();
 
-                boolean isAdminRoute = path.startsWith("/api/v1/salons") && 
-                                       (method.equals("POST") || method.equals("PUT") || method.equals("DELETE"));
+                boolean isAdminSalonRoute = path.startsWith("/api/v1/salons") &&
+                        (method.equals("POST") || method.equals("PUT") || method.equals("DELETE"));
 
-                if (isAdminRoute && !"ROLE_ADMIN".equals(role)) {
+                boolean isAdminAppointmentRoute = path.equals("/api/v1/appointments") && method.equals("GET");
+
+                if ((isAdminSalonRoute || isAdminAppointmentRoute) && !"ROLE_ADMIN".equals(role)) {
                     log.warn("Access denied: User {} with role {} tried to access admin route {}", email, role, path);
                     return onError(
                             exchange,
@@ -188,56 +181,45 @@ public class AuthenticationFilter
                 return chain.filter(mutatedExchange);
 
             } catch (ExpiredJwtException e) {
-
                 log.warn(
                         "JWT token expired at path {}: {}",
                         request.getURI().getPath(),
                         e.getMessage()
                 );
-
                 return onError(
                         exchange,
                         "JWT token has expired",
                         HttpStatus.UNAUTHORIZED
                 );
-
             } catch (SignatureException e) {
-
                 log.warn(
                         "JWT signature validation failed at path {}: {}",
                         request.getURI().getPath(),
                         e.getMessage()
                 );
-
                 return onError(
                         exchange,
                         "JWT signature validation failed",
                         HttpStatus.UNAUTHORIZED
                 );
-
             } catch (MalformedJwtException e) {
-
                 log.warn(
                         "Malformed JWT token at path {}: {}",
                         request.getURI().getPath(),
                         e.getMessage()
                 );
-
                 return onError(
                         exchange,
                         "Malformed JWT token",
                         HttpStatus.UNAUTHORIZED
                 );
-
             } catch (Exception e) {
-
                 log.error(
                         "JWT validation error at path {}: {}",
                         request.getURI().getPath(),
                         e.getMessage(),
                         e
                 );
-
                 return onError(
                         exchange,
                         "Invalid JWT token",
@@ -252,11 +234,8 @@ public class AuthenticationFilter
             String message,
             HttpStatus status
     ) {
-
         ServerHttpResponse response = exchange.getResponse();
-
         response.setStatusCode(status);
-
         response.getHeaders().setContentType(
                 MediaType.APPLICATION_JSON
         );
@@ -275,9 +254,7 @@ public class AuthenticationFilter
                 .build();
 
         try {
-
             byte[] bytes = objectMapper.writeValueAsBytes(apiResponse);
-
             DataBuffer buffer = response
                     .bufferFactory()
                     .wrap(bytes);
@@ -285,15 +262,12 @@ public class AuthenticationFilter
             return response.writeWith(
                     Mono.just(buffer)
             );
-
         } catch (JsonProcessingException e) {
-
             log.error(
                     "Error writing error response to JSON: {}",
                     e.getMessage(),
                     e
             );
-
             return response.setComplete();
         }
     }

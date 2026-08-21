@@ -18,20 +18,19 @@ public class RouteValidator {
             request -> {
                 String path = request.getURI().getPath();
                 String method = request.getMethod().name();
-                
-                if (path.equals("/api/v1/users/register") || 
-                    path.equals("/api/v1/users/login")) {
+
+                if (openApiEndpoints.stream().anyMatch(path::contains)) {
                     return false;
                 }
-                
+
                 if (path.startsWith("/api/v1/salons") && method.equalsIgnoreCase("GET")) {
                     return false;
                 }
-                
+
                 if (path.contains("/eureka")) {
                     return false;
                 }
-                
+
                 return true;
             };
 }
