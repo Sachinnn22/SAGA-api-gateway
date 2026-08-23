@@ -72,99 +72,51 @@ public class AuthenticationFilter
                     .getFirst(HttpHeaders.AUTHORIZATION);
 
             if (authHeader == null || authHeader.isBlank()) {
-                log.warn(
-                        "Authentication failed: Missing Authorization header for path: {}",
-                        request.getURI().getPath()
-                );
-                return onError(
-                        exchange,
-                        "Authorization header is missing",
-                        HttpStatus.UNAUTHORIZED
-                );
+                log.warn("Authentication failed: Missing Authorization header for path: {}", request.getURI().getPath());
+                return onError(exchange, "Authorization header is missing", HttpStatus.UNAUTHORIZED);
             }
 
             if (!authHeader.startsWith("Bearer ")) {
-                log.warn(
-                        "Authentication failed: Invalid Authorization header format for path: {}",
-                        request.getURI().getPath()
-                );
-                return onError(
-                        exchange,
-                        "Invalid Authorization header format",
-                        HttpStatus.UNAUTHORIZED
-                );
+                log.warn("Authentication failed: Invalid Authorization header format for path: {}", request.getURI().getPath());
+                return onError(exchange, "Invalid Authorization header format", HttpStatus.UNAUTHORIZED);
             }
 
             String token = authHeader.substring(7).trim();
 
             if (token.isBlank()) {
-                return onError(
-                        exchange,
-                        "JWT token is missing",
-                        HttpStatus.UNAUTHORIZED
-                );
+                return onError(exchange, "JWT token is missing", HttpStatus.UNAUTHORIZED);
             }
 
             try {
-
                 String email = jwtUtil.extractEmail(token);
                 Long id = jwtUtil.extractId(token);
                 String role = jwtUtil.extractRole(token);
 
                 if (email == null || email.isBlank()) {
-                    log.warn(
-                            "Authentication failed: Email not found in JWT for path: {}",
-                            request.getURI().getPath()
-                    );
-                    return onError(
-                            exchange,
-                            "JWT token is invalid",
-                            HttpStatus.UNAUTHORIZED
-                    );
+                    return onError(exchange, "JWT token is invalid", HttpStatus.UNAUTHORIZED);
                 }
 
                 if (jwtUtil.isTokenExpired(token)) {
-                    log.warn(
-                            "Authentication failed: JWT token has expired for path: {}",
-                            request.getURI().getPath()
-                    );
-                    return onError(
-                            exchange,
-                            "JWT token has expired",
-                            HttpStatus.UNAUTHORIZED
-                    );
+                    return onError(exchange, "JWT token has expired", HttpStatus.UNAUTHORIZED);
                 }
 
                 String path = request.getURI().getPath();
                 String method = request.getMethod().name();
 
+                boolean isAdminUserRoute = path.startsWith("/api/v1/admin/");
                 boolean isAdminSalonRoute = path.startsWith("/api/v1/salons") &&
                         (method.equals("POST") || method.equals("PUT") || method.equals("DELETE"));
-
                 boolean isAdminAppointmentRoute = path.equals("/api/v1/appointments") && method.equals("GET");
 
-                if ((isAdminSalonRoute || isAdminAppointmentRoute) && !"ROLE_ADMIN".equals(role)) {
+                if ((isAdminUserRoute || isAdminSalonRoute || isAdminAppointmentRoute) && !"ROLE_ADMIN".equals(role)) {
                     log.warn("Access denied: User {} with role {} tried to access admin route {}", email, role, path);
-                    return onError(
-                            exchange,
-                            "Access Denied: Only Admins can perform this action",
-                            HttpStatus.FORBIDDEN
-                    );
+                    return onError(exchange, "Access Denied: Only Admins can perform this action", HttpStatus.FORBIDDEN);
                 }
 
                 ServerHttpRequest mutatedRequest = request.mutate()
-                        .header(
-                                "X-User-Id",
-                                id != null ? String.valueOf(id) : ""
-                        )
-                        .header(
-                                "X-User-Email",
-                                email
-                        )
-                        .header(
-                                "X-User-Role",
-                                role != null ? role : ""
-                        )
+                        .header("X-User-Id", id != null ? String.valueOf(id) : "")
+                        .header("X-User-Email", email)
+                        .header("X-User-Role", role != null ? role : "")
                         .build();
 
                 ServerWebExchange mutatedExchange = exchange
@@ -172,59 +124,16 @@ public class AuthenticationFilter
                         .request(mutatedRequest)
                         .build();
 
-                log.debug(
-                        "JWT authentication successful for user: {} | path: {}",
-                        email,
-                        request.getURI().getPath()
-                );
-
                 return chain.filter(mutatedExchange);
 
             } catch (ExpiredJwtException e) {
-                log.warn(
-                        "JWT token expired at path {}: {}",
-                        request.getURI().getPath(),
-                        e.getMessage()
-                );
-                return onError(
-                        exchange,
-                        "JWT token has expired",
-                        HttpStatus.UNAUTHORIZED
-                );
+                return onError(exchange, "JWT token has expired", HttpStatus.UNAUTHORIZED);
             } catch (SignatureException e) {
-                log.warn(
-                        "JWT signature validation failed at path {}: {}",
-                        request.getURI().getPath(),
-                        e.getMessage()
-                );
-                return onError(
-                        exchange,
-                        "JWT signature validation failed",
-                        HttpStatus.UNAUTHORIZED
-                );
+                return onError(exchange, "JWT signature validation failed", HttpStatus.UNAUTHORIZED);
             } catch (MalformedJwtException e) {
-                log.warn(
-                        "Malformed JWT token at path {}: {}",
-                        request.getURI().getPath(),
-                        e.getMessage()
-                );
-                return onError(
-                        exchange,
-                        "Malformed JWT token",
-                        HttpStatus.UNAUTHORIZED
-                );
+                return onError(exchange, "Malformed JWT token", HttpStatus.UNAUTHORIZED);
             } catch (Exception e) {
-                log.error(
-                        "JWT validation error at path {}: {}",
-                        request.getURI().getPath(),
-                        e.getMessage(),
-                        e
-                );
-                return onError(
-                        exchange,
-                        "Invalid JWT token",
-                        HttpStatus.UNAUTHORIZED
-                );
+                return onError(exchange, "Invalid JWT token", HttpStatus.UNAUTHORIZED);
             }
         };
     }
@@ -236,9 +145,7 @@ public class AuthenticationFilter
     ) {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(status);
-        response.getHeaders().setContentType(
-                MediaType.APPLICATION_JSON
-        );
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
         ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
                 .success(false)
@@ -255,24 +162,13 @@ public class AuthenticationFilter
 
         try {
             byte[] bytes = objectMapper.writeValueAsBytes(apiResponse);
-            DataBuffer buffer = response
-                    .bufferFactory()
-                    .wrap(bytes);
-
-            return response.writeWith(
-                    Mono.just(buffer)
-            );
+            DataBuffer buffer = response.bufferFactory().wrap(bytes);
+            return response.writeWith(Mono.just(buffer));
         } catch (JsonProcessingException e) {
-            log.error(
-                    "Error writing error response to JSON: {}",
-                    e.getMessage(),
-                    e
-            );
             return response.setComplete();
         }
     }
 
     public static class Config {
-
     }
 }

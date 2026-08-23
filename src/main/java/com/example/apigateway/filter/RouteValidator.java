@@ -1,5 +1,6 @@
 package com.example.apigateway.filter;
 
+import org.springframework.http.HttpMethod; // 👈 අත්‍යවශ්‍යයි
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,10 @@ public class RouteValidator {
             request -> {
                 String path = request.getURI().getPath();
                 String method = request.getMethod().name();
+
+                if (request.getMethod().equals(HttpMethod.OPTIONS)) {
+                    return false;
+                }
 
                 if (openApiEndpoints.stream().anyMatch(path::contains)) {
                     return false;
