@@ -1,9 +1,6 @@
-server:
-  port: 8084
-
 spring:
   application:
     name: api-gateway
 
   config:
-    import: "optional:configserver:"
+    import: "configserver:"
