@@ -4,3 +4,8 @@ spring:
 
   config:
     import: "configserver:"
+    
+  cloud:
+    config:
+      uri: http://localhost:8888
+    
